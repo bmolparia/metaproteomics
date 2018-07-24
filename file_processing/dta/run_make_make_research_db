@@ -1,0 +1,23 @@
+#!/bin/bash
+# run this file from a directory that contains several other directories
+# each sub dir contains "indexDB_search_10ppm_50ppmfrag" (or change that to your liking), that contains sqt files
+
+# requires the following files from metaproteomics/file_processing/dta/ in current dir:
+# get_protDB_IDs_noProtDBSQT.py, forward_reverse_protID.py, make_fasta_from_ProtDB_IDs.py
+
+
+PROTDB_NAME="ProtDB_072114"
+PROTDB_COLLNAME="ProtDB_072114"
+SEQDB_NAME="SeqDB_072114"
+SEQDB_COLLNAME="SeqDB_072114"
+MONGOHOST="localhost"
+MONGOPORT="27018"
+
+cat `find . -maxdepth 3 -path '*indexDB_search_10ppm_50ppmfrag*.sqt'` | grep -P '^M\t1\t' | parallel -j+8 --block 500K --pipe python3 get_protDB_IDs_noProtDBSQT.py $SEQDB_NAME $SEQDB_COLLNAME $PROTDB_NAME $PROTDB_COLLNAME --host $MONGOHOST --port $MONGOPORT | sort | uniq > protdbIDs
+
+cat protdbIDs | python3 forward_reverse_protID.py $PROTDB_NAME $PROTDB_COLLNAME --host $MONGOHOST --port $MONGOPORT | sort | uniq > protdbIDs_fr
+
+cat protdbIDs_fr | parallel -j+8 --block 50K --pipe python3 make_fasta_from_ProtDB_IDs.py $PROTDB_NAME $PROTDB_COLLNAME --host $MONGOHOST --port $MONGOPORT > re_search.fasta
+
+echo "Errors: "`grep -c '!' re_search.fasta`
+echo "Finished"

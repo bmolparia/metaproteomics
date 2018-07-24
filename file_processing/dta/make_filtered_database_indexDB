@@ -1,0 +1,13 @@
+#!/bin/bash
+
+PROTDB_NAME="ProtDB_072114"
+PROTDB_COLLNAME="ProtDB_072114"
+SEQDB_NAME="SeqDB_072114"
+SEQDB_COLLNAME="SeqDB_072114"
+MONGOHOST="localhost"
+MONGOPORT="27018"
+
+cat *sqt | grep -P '^M\t1\t' | parallel -j+8 --block 500K --pipe python3 get_protDB_IDs_noProtDBSQT.py $SEQDB_NAME $SEQDB_COLLNAME $PROTDB_NAME $PROTDB_COLLNAME --host $MONGOHOST --port $MONGOPORT | sort | uniq | parallel -j+8 --block 50K --pipe python3 make_fasta_from_ProtDB_IDs_noProtDB.py $PROTDB_NAME $PROTDB_COLLNAME --host $MONGOHOST --port $MONGOPORT > filtered_DB_firstmatchonly_noProtDB.fasta
+echo "Errors: "`grep -c '!' filtered_DB_firstmatchonly_noProtDB.fasta`
+echo "Finished"
+
